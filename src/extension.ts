@@ -82,6 +82,19 @@ export async function activate(context: vscode.ExtensionContext) {
         g_juliaExecutablesFeature = new JuliaExecutablesFeature(context, globalDiagnosticOutputFeature)
         context.subscriptions.push(g_juliaExecutablesFeature)
         await g_juliaExecutablesFeature.getActiveJuliaExecutableAsync() // We run this function now and await to make sure we don't run in twice simultaneously later
+        
+        // Register Positron runtime manager if running in Positron
+        try {
+            const positron = await import('positron')
+            const { JuliaRuntimeManager } = await import('./positron/runtimeManager')
+            const juliaRuntimeManager = new JuliaRuntimeManager(context, g_juliaExecutablesFeature)
+            context.subscriptions.push(positron.runtime.registerLanguageRuntimeManager('julia', juliaRuntimeManager))
+            console.log('Julia runtime manager registered with Positron')
+        } catch (error) {
+            // Positron API not available, this is expected in VS Code
+            console.debug('Positron API not available, skipping runtime manager registration')
+        }
+        
         repl.activate(context, compiledProvider, g_juliaExecutablesFeature, profilerFeature)
         weave.activate(context, g_juliaExecutablesFeature)
         documentation.activate(context)
